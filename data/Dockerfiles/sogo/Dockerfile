@@ -1,52 +1,60 @@
-FROM debian:jessie-slim
+FROM debian:stretch-slim
 LABEL maintainer "Andre Peters <andre.peters@servercow.de>"
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV LC_ALL C
 ENV GOSU_VERSION 1.9
 
+# Prerequisites
 RUN apt-get update && apt-get install -y --no-install-recommends \
-		apt-transport-https \
-		ca-certificates \
-		cron \
-		gnupg \
-		mysql-client \
-		supervisor \
-		syslog-ng \
-		syslog-ng-core \
-		syslog-ng-mod-redis \
-		wget \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')" \
-	&& wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch" \
-	&& wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc" \
-	&& export GNUPGHOME="$(mktemp -d)" \
-	&& gpg --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \
-	&& gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu \
-	&& rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc \
-	&& chmod +x /usr/local/bin/gosu \
-	&& gosu nobody true
+  apt-transport-https \
+  ca-certificates \
+  cron \
+  gettext \
+  gnupg \
+  mysql-client \
+  supervisor \
+  syslog-ng \
+  syslog-ng-core \
+  syslog-ng-mod-redis \
+  dirmngr \
+  netcat \
+  psmisc \
+  wget \
+  patch \
+  && rm -rf /var/lib/apt/lists/* \
+  && dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')" \
+  && wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch" \
+  && chmod +x /usr/local/bin/gosu \
+  && gosu nobody true
 
-RUN mkdir /usr/share/doc/sogo
-RUN touch /usr/share/doc/sogo/empty.sh
+RUN mkdir /usr/share/doc/sogo \
+  && touch /usr/share/doc/sogo/empty.sh \
+  && apt-key adv --keyserver keyserver.ubuntu.com --recv-key 0x810273C4 \
+  && echo "deb http://packages.inverse.ca/SOGo/nightly/4/debian/ stretch stretch" > /etc/apt/sources.list.d/sogo.list \
+  && apt-get update && apt-get install -y --force-yes \
+    sogo \
+    sogo-activesync \
+  && rm -rf /var/lib/apt/lists/* \
+  && echo '* * * * *   sogo   /usr/sbin/sogo-ealarms-notify 2>/dev/null' > /etc/cron.d/sogo \
+  && echo '* * * * *   sogo   /usr/sbin/sogo-tool expire-sessions 60' >> /etc/cron.d/sogo \
+  && echo '0 0 * * *   sogo   /usr/sbin/sogo-tool update-autoreply -p /etc/sogo/sieve.creds' >> /etc/cron.d/sogo \
+  && touch /etc/default/locale
 
-RUN apt-key adv --keyserver keys.gnupg.net --recv-key 0x810273C4 \
-	&& echo "deb http://packages.inverse.ca/SOGo/nightly/3/debian/ jessie jessie" > /etc/apt/sources.list.d/sogo.list \
-	&& apt-get update && apt-get install -y --force-yes \
-		sogo \
-		sogo-activesync \
-	&& rm -rf /var/lib/apt/lists/*
-
-RUN echo '* * * * *   sogo   /usr/sbin/sogo-ealarms-notify 2>/dev/null' > /etc/cron.d/sogo
-RUN echo '* * * * *   sogo   /usr/sbin/sogo-tool expire-sessions 60' >> /etc/cron.d/sogo
-RUN echo '0 0 * * *   sogo   /usr/sbin/sogo-tool update-autoreply -p /etc/sogo/sieve.creds' >> /etc/cron.d/sogo
-
-RUN touch /etc/default/locale
-
-COPY ./reconf-domains.sh /
+COPY ./bootstrap-sogo.sh /bootstrap-sogo.sh
 COPY syslog-ng.conf /etc/syslog-ng/syslog-ng.conf
 COPY supervisord.conf /etc/supervisor/supervisord.conf
+COPY theme-blue.js /usr/lib/GNUstep/SOGo/WebServerResources/js/theme-blue.js
+COPY theme-blue.css /usr/lib/GNUstep/SOGo/WebServerResources/css/theme-default.css
+COPY sogo-full.svg /usr/lib/GNUstep/SOGo/WebServerResources/img/sogo-full.svg
+COPY acl.diff /acl.diff
+COPY stop-supervisor.sh /usr/local/sbin/stop-supervisor.sh
+
+RUN chmod +x /bootstrap-sogo.sh \
+  /usr/local/sbin/stop-supervisor.sh
 
 CMD exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
+
+VOLUME /usr/lib/GNUstep/SOGo/
 
 RUN rm -rf /tmp/* /var/tmp/*

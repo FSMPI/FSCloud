@@ -1,10 +1,9 @@
 #!/bin/bash
-set -e
 
-if [[ ! -d "/data/dkim/txt" || ! -d "/data/dkim/keys" ]] ; then	mkdir -p /data/dkim/{txt,keys} ; chown -R www-data:www-data /data/dkim; fi
-if [[ $(stat -c %U /data/dkim/) != "www-data" ]] ; then chown -R www-data:www-data /data/dkim ; fi
-
-# Migrate domain table to redis
-
+chown -R _rspamd:_rspamd /var/lib/rspamd /etc/rspamd/local.d /etc/rspamd/override.d /etc/rspamd/custom
+chmod 755 /var/lib/rspamd
+[[ ! -f /etc/rspamd/override.d/worker-controller-password.inc ]] && echo '# Placeholder' > /etc/rspamd/override.d/worker-controller-password.inc
+chown _rspamd:_rspamd /etc/rspamd/override.d/worker-controller-password.inc
+[[ ! -f /etc/rspamd/custom/sa-rules-heinlein ]] && echo '# to be auto-filled by dovecot-mailcow' > /etc/rspamd/custom/sa-rules-heinlein
 
 exec "$@"

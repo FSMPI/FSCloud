@@ -6,7 +6,7 @@ if (isset($_POST["verify_tfa_login"])) {
     unset($_SESSION['pending_mailcow_cc_username']);
     unset($_SESSION['pending_mailcow_cc_role']);
     unset($_SESSION['pending_tfa_method']);
-		header("Location: /user.php");
+		header("Location: /user");
   }
 }
 
@@ -16,17 +16,20 @@ if (isset($_POST["login_user"]) && isset($_POST["pass_user"])) {
 	if ($as == "admin") {
 		$_SESSION['mailcow_cc_username'] = $login_user;
 		$_SESSION['mailcow_cc_role'] = "admin";
-		header("Location: /admin.php");
+    $_SESSION['mailcow_cc_last_login'] = last_login($login_user);
+		header("Location: /admin");
 	}
 	elseif ($as == "domainadmin") {
 		$_SESSION['mailcow_cc_username'] = $login_user;
 		$_SESSION['mailcow_cc_role'] = "domainadmin";
-		header("Location: /mailbox.php");
+    $_SESSION['mailcow_cc_last_login'] = last_login($login_user);
+		header("Location: /mailbox");
 	}
 	elseif ($as == "user") {
 		$_SESSION['mailcow_cc_username'] = $login_user;
 		$_SESSION['mailcow_cc_role'] = "user";
-		header("Location: /user.php");
+    $_SESSION['mailcow_cc_last_login'] = last_login($login_user);
+		header("Location: /user");
 	}
 	elseif ($as != "pending") {
     unset($_SESSION['pending_mailcow_cc_username']);
@@ -34,146 +37,64 @@ if (isset($_POST["login_user"]) && isset($_POST["pass_user"])) {
     unset($_SESSION['pending_tfa_method']);
 		unset($_SESSION['mailcow_cc_username']);
 		unset($_SESSION['mailcow_cc_role']);
-		$_SESSION['return'] = array(
-			'type' => 'danger',
-			'msg' => $lang['danger']['login_failed']
-		);
 	}
 }
 
-if (isset($_SESSION['mailcow_cc_role']) && $_SESSION['mailcow_cc_role'] == "admin") {
+if (isset($_SESSION['mailcow_cc_role']) && $_SESSION['acl']['login_as'] == "1") {
 	if (isset($_GET["duallogin"])) {
-    if (filter_var($_GET["duallogin"], FILTER_VALIDATE_EMAIL)) {
-      $stmt = $pdo->prepare("SELECT `username` FROM `mailbox` WHERE `username` = :duallogin");
-      $stmt->execute(array(':duallogin' => $_GET["duallogin"]));
-      $num_results = count($stmt->fetchAll(PDO::FETCH_ASSOC));
-      if ($num_results != 0) {
+    $duallogin = html_entity_decode(rawurldecode($_GET["duallogin"]));
+    if (filter_var($duallogin, FILTER_VALIDATE_EMAIL)) {
+      if (!empty(mailbox('get', 'mailbox_details', $duallogin))) {
         $_SESSION["dual-login"]["username"] = $_SESSION['mailcow_cc_username'];
         $_SESSION["dual-login"]["role"]     = $_SESSION['mailcow_cc_role'];
-        $_SESSION['mailcow_cc_username']    = $_GET["duallogin"];
+        $_SESSION['mailcow_cc_username']    = $duallogin;
         $_SESSION['mailcow_cc_role']        = "user";
-        header("Location: /user.php");
+        header("Location: /user");
+      }
+    }
+    else {
+      if (!empty(domain_admin('details', $duallogin))) {
+        $_SESSION["dual-login"]["username"] = $_SESSION['mailcow_cc_username'];
+        $_SESSION["dual-login"]["role"]     = $_SESSION['mailcow_cc_role'];
+        $_SESSION['mailcow_cc_username']    = $duallogin;
+        $_SESSION['mailcow_cc_role']        = "domainadmin";
+        header("Location: /user");
       }
     }
   }
+}
 
-	if (isset($_POST["edit_admin_account"])) {
-		edit_admin_account($_POST);
-	}
-	if (isset($_POST["dkim_delete_key"])) {
-		dkim_delete_key($_POST);
-	}
-	if (isset($_POST["dkim_add_key"])) {
-		dkim_add_key($_POST);
-	}
-	if (isset($_POST["add_domain_admin"])) {
-		add_domain_admin($_POST);
-	}
-	if (isset($_POST["delete_domain_admin"])) {
-		delete_domain_admin($_POST);
-	}
-	if (isset($_POST["add_forwarding_host"])) {
-		add_forwarding_host($_POST);
-	}
-	if (isset($_POST["delete_forwarding_host"])) {
-		delete_forwarding_host($_POST);
-	}
-}
-if (isset($_SESSION['mailcow_cc_role']) && $_SESSION['mailcow_cc_role'] == "user") {
-	if (isset($_POST["edit_user_account"])) {
-		edit_user_account($_POST);
-	}
-	if (isset($_POST["mailbox_reset_eas"])) {
-		mailbox_reset_eas($_POST);
-	}
-	if (isset($_POST["edit_spam_score"])) {
-		edit_spam_score($_POST);
-	}
-	if (isset($_POST["edit_delimiter_action"])) {
-		edit_delimiter_action($_POST);
-	}
-	if (isset($_POST["add_policy_list_item"])) {
-		add_policy_list_item($_POST);
-	}
-	if (isset($_POST["delete_policy_list_item"])) {
-		delete_policy_list_item($_POST);
-	}
-	if (isset($_POST["edit_tls_policy"])) {
-		edit_tls_policy($_POST);
-	}
-	if (isset($_POST["add_syncjob"])) {
-		add_syncjob($_POST);
-	}
-	if (isset($_POST["edit_syncjob"])) {
-		edit_syncjob($_POST);
-	}
-	if (isset($_POST["delete_syncjob"])) {
-		delete_syncjob($_POST);
-	}
-	if (isset($_POST["set_time_limited_aliases"])) {
-		set_time_limited_aliases($_POST);
-	}
-}
 if (isset($_SESSION['mailcow_cc_role']) && ($_SESSION['mailcow_cc_role'] == "admin" || $_SESSION['mailcow_cc_role'] == "domainadmin")) {
-	if (isset($_POST["edit_domain_admin"])) {
-		edit_domain_admin($_POST);
-	}
 	if (isset($_POST["set_tfa"])) {
 		set_tfa($_POST);
 	}
 	if (isset($_POST["unset_tfa_key"])) {
 		unset_tfa_key($_POST);
 	}
-	if (isset($_POST["add_policy_list_item"])) {
-		add_policy_list_item($_POST);
+}
+if (isset($_SESSION['mailcow_cc_role']) && $_SESSION['mailcow_cc_role'] == "admin") {
+  // TODO: Move file upload to API?
+	if (isset($_POST["submit_main_logo"])) {
+    if ($_FILES['main_logo']['error'] == 0) {
+      customize('add', 'main_logo', $_FILES);
+    }
 	}
-	if (isset($_POST["delete_policy_list_item"])) {
-		delete_policy_list_item($_POST);
+	if (isset($_POST["reset_main_logo"])) {
+    customize('delete', 'main_logo');
 	}
-	if (isset($_POST["mailbox_add_domain"])) {
-		mailbox_add_domain($_POST);
+  // API cannot be controlled by API
+	if (isset($_POST["admin_api"])) {
+		admin_api('edit', $_POST);
 	}
-	if (isset($_POST["mailbox_add_alias"])) {
-		mailbox_add_alias($_POST);
+	if (isset($_POST["admin_api_regen_key"])) {
+		admin_api('regen_key', $_POST);
 	}
-	if (isset($_POST["mailbox_add_alias_domain"])) {
-		mailbox_add_alias_domain($_POST);
+  // Not available via API
+	if (isset($_POST["rspamd_ui"])) {
+		rspamd_ui('edit', $_POST);
 	}
-	if (isset($_POST["mailbox_add_mailbox"])) {
-		mailbox_add_mailbox($_POST);
-	}
-	if (isset($_POST["mailbox_add_resource"])) {
-		mailbox_add_resource($_POST);
-	}
-	if (isset($_POST["mailbox_edit_alias"])) {
-		mailbox_edit_alias($_POST);
-	}
-	if (isset($_POST["mailbox_edit_domain"])) {
-		mailbox_edit_domain($_POST);
-	}
-	if (isset($_POST["mailbox_edit_mailbox"])) {
-		mailbox_edit_mailbox($_POST);
-	}
-	if (isset($_POST["mailbox_edit_alias_domain"])) {
-		mailbox_edit_alias_domain($_POST);
-	}
-	if (isset($_POST["mailbox_edit_resource"])) {
-		mailbox_edit_resource($_POST);
-	}
-	if (isset($_POST["mailbox_delete_domain"])) {
-		mailbox_delete_domain($_POST);
-	}
-	if (isset($_POST["mailbox_delete_alias"])) {
-		mailbox_delete_alias($_POST);
-	}
-	if (isset($_POST["mailbox_delete_alias_domain"])) {
-		mailbox_delete_alias_domain($_POST);
-	}
-	if (isset($_POST["mailbox_delete_mailbox"])) {
-		mailbox_delete_mailbox($_POST);
-	}
-	if (isset($_POST["mailbox_delete_resource"])) {
-		mailbox_delete_resource($_POST);
+	if (isset($_POST["mass_send"])) {
+		sys_mail($_POST);
 	}
 }
 ?>

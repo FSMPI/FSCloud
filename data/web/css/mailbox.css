@@ -11,6 +11,14 @@ table.footable>tbody>tr.footable-empty>td {
 .table-responsive {
   overflow: visible !important;
 }
+@media screen and (max-width: 767px) {
+  .table-responsive {
+    overflow-x: scroll !important;
+  }
+}
+.btn-group {
+  width: max-content;
+}
 .footer-add-item {
   display:block;
   text-align: center;
@@ -26,4 +34,22 @@ table.footable>tbody>tr.footable-empty>td {
 .mass-actions-mailbox {
   user-select: none;
   padding:10px 0 10px 10px;
+}
+.inputMissingAttr {
+  border-color: #FF4136;
+}
+.dns-found {
+  max-width: 300px;
+  word-break: break-all;
+}
+.dns-recommended {
+  max-width: 150px;
+  word-break: break-all;
+}
+.table-lines {
+  vertical-align: inherit;
+}
+#logText {
+  font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;
+  font-size:smaller;
 }

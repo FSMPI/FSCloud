@@ -11,6 +11,11 @@ table.footable>tbody>tr.footable-empty>td {
 .table-responsive {
   overflow: visible !important;
 }
+@media screen and (max-width: 767px) {
+  .table-responsive {
+    overflow-x: scroll !important;
+  }
+}
 .footer-add-item {
   display:block;
   text-align: center;
@@ -21,4 +26,14 @@ table.footable>tbody>tr.footable-empty>td {
 .mass-actions-user {
   user-select: none;
   padding:10px 0 10px 0;
+}
+.inputMissingAttr {
+  border-color: #FF4136;
+}
+#logText {
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -pre-wrap;
+  white-space: -o-pre-wrap;
+  word-wrap: break-word;
 }
